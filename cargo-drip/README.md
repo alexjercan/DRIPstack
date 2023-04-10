@@ -2,7 +2,7 @@
 
 # Cargo DRIP
 
-The back-end for the DRIP stack built with Rust.
+The back-end for the DRIP stack built with Rust and [axum](https://github.com/tokio-rs/axum).
 
 </div>
 

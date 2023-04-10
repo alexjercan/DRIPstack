@@ -4,7 +4,7 @@
 
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-The front-end application for the DRIP stack built with SolidJS.
+The front-end application for the DRIP stack built with [SolidJS](https://github.com/solidjs/solid).
 
 </div>
 
