@@ -1,16 +1,26 @@
 import type { Component } from 'solid-js'
-import { createResource } from 'solid-js'
+import { createSignal, createResource } from 'solid-js'
 
-const fetchMessage = async () => (await fetch('http://localhost:8080')).text()
+const fetchResult = async (room: string) => {
+    return (
+        await fetch(`http://localhost:8080/home/${room}/1/2000000000000`)
+    ).json()
+}
 
 const App: Component = () => {
-    const [message] = createResource(fetchMessage)
+    const [room, setRoom] = createSignal()
+    const [result] = createResource(room, fetchResult)
 
     return (
         <>
-            <span>{message.loading && 'Loading...'}</span>
+            <input
+                type="string"
+                placeholder="room"
+                onInput={(e) => setRoom(e.currentTarget.value)}
+            />
+            <span>{result.loading && 'Loading...'}</span>
             <div>
-                <pre>{JSON.stringify(message(), null, 2)}</pre>
+                <pre>{JSON.stringify(result(), null, 2)}</pre>
             </div>
         </>
     )
