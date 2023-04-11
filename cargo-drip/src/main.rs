@@ -1,12 +1,15 @@
 use anyhow::Result;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
+    http::StatusCode,
     routing::get,
-    Router,
+    Json, Router,
 };
 use chrono::prelude::{DateTime, Utc};
 use influxdb::{Client, ReadQuery, Timestamp};
-use std::env;
+use serde::Deserialize;
+use serde_json::Value;
+use std::{collections::HashMap, env};
 use tower_http::cors::CorsLayer;
 
 #[derive(Clone)]
@@ -14,28 +17,78 @@ struct AppState {
     client: Client,
 }
 
-async fn ping(State(state): State<AppState>) -> String {
+#[derive(Debug, Default)]
+struct Filter {
+    tags: HashMap<String, Vec<String>>,
+    start_time: Option<usize>,
+    end_time: Option<usize>,
+    limit: Option<usize>,
+}
+
+impl<'de> Deserialize<'de> for Filter {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        return Ok(Vec::<(String, String)>::deserialize(deserializer)?
+            .into_iter()
+            .fold(Filter::default(), |mut acc, (k, v)| {
+                match k.as_str() {
+                    "start_time" => acc.start_time = v.parse().ok(),
+                    "end_time" => acc.end_time = v.parse().ok(),
+                    "limit" => acc.limit = v.parse().ok(),
+                    _ => {
+                        acc.tags.entry(k).or_default().push(v);
+                    }
+                }
+
+                return acc;
+            }));
+    }
+}
+
+async fn ping(State(state): State<AppState>) -> Result<String, StatusCode> {
     return match state.client.ping().await {
-        Ok((build, version)) => format!("{}: {}", build, version),
-        Err(err) => format!("{}", err),
+        Ok((build, version)) => Ok(format!("{}: {}", build, version)),
+        _ => Err(StatusCode::INTERNAL_SERVER_ERROR),
     };
 }
 
-async fn home(
+fn parse_tags(tags: String) -> Option<Vec<String>> {
+    let result: Value = serde_json::from_str(&tags).ok()?;
+    let results = result.get("results")?;
+    let first = results.get(0)?;
+    let series = first.get("series")?;
+    let first = series.get(0)?;
+    let values: &Value = first.get("values")?;
+    let values = values.as_array()?;
+    let values: Option<Vec<_>> = values
+        .iter()
+        .map(|value| Some(value.get(1)?.as_str()?.to_owned()))
+        .collect();
+
+    return values;
+}
+
+async fn tags(
     State(state): State<AppState>,
-    Path((room, start, end)): Path<(String, u128, u128)>,
-) -> String {
-    let start: DateTime<Utc> = Timestamp::Milliseconds(start).into();
-    let end: DateTime<Utc> = Timestamp::Milliseconds(end).into();
-    let read_query = ReadQuery::new(format!(
-        "SELECT * FROM home WHERE \"room\" = '{}' AND time >= '{:?}' AND time <= '{:?}'",
-        room, start, end
+    Path(tag): Path<String>,
+    Query(query): Query<Filter>,
+) -> Result<Json<Vec<String>>, StatusCode> {
+    println!("{:?}", query);
+
+    let bucket = state.client.database_name();
+    let query = ReadQuery::new(format!(
+        "SHOW TAG VALUES ON \"{}\" WITH KEY = \"{}\"",
+        bucket, tag
     ));
-    let read_result = state.client.query(read_query).await;
-    return match read_result {
-        Ok(text) => text,
-        Err(err) => format!("{:?}", err),
-    };
+    let result = state
+        .client
+        .query(query)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    return parse_tags(result).map(Json).ok_or(StatusCode::NOT_FOUND);
 }
 
 #[tokio::main]
@@ -48,12 +101,8 @@ async fn main() -> Result<()> {
     let state = AppState { client };
 
     let app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
         .route("/ping", get(ping).with_state(state.clone()))
-        .route(
-            "/home/:room/:start/:end",
-            get(home).with_state(state.clone()),
-        )
+        .route("/tags/:tag", get(tags).with_state(state.clone()))
         .layer(CorsLayer::permissive());
 
     axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
