@@ -5,8 +5,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use chrono::prelude::{DateTime, Utc};
-use influxdb::{Client, ReadQuery, Timestamp};
+use influxdb::{Client, ReadQuery};
 use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, env};
@@ -23,6 +22,33 @@ struct Filter {
     start_time: Option<usize>,
     end_time: Option<usize>,
     limit: Option<usize>,
+}
+
+impl Filter {
+    fn get_filter(self: &Self) -> String {
+        let tags = self
+            .tags
+            .iter()
+            .map(|(tag, values)| {
+                let pairs: Vec<_> = values
+                    .iter()
+                    .map(|v| format!("\"{}\" = '{}'", tag, v))
+                    .collect();
+                return pairs.join(" AND ");
+            })
+            .collect::<Vec<_>>()
+            .join(" AND ");
+
+        return vec![
+            Some(tags),
+            self.start_time.map(|u| format!("\"time\" >= {}", u)),
+            self.end_time.map(|u| format!("\"time\" <= {}", u)),
+        ]
+        .into_iter()
+        .filter_map(|e| e)
+        .collect::<Vec<_>>()
+        .join(" AND ");
+    }
 }
 
 impl<'de> Deserialize<'de> for Filter {
@@ -75,12 +101,17 @@ async fn tags(
     Path(tag): Path<String>,
     Query(query): Query<Filter>,
 ) -> Result<Json<Vec<String>>, StatusCode> {
-    println!("{:?}", query);
-
     let bucket = state.client.database_name();
+    let filter = query.get_filter();
+
+    let filter = match filter.as_str() {
+        "" => String::default(),
+        _ => format!(" WHERE {}", filter),
+    };
+
     let query = ReadQuery::new(format!(
-        "SHOW TAG VALUES ON \"{}\" WITH KEY = \"{}\"",
-        bucket, tag
+        "SHOW TAG VALUES ON \"{}\" WITH KEY = \"{}\"{}",
+        bucket, tag, filter
     ));
     let result = state
         .client
