@@ -80,6 +80,37 @@ async fn ping(State(state): State<AppState>) -> Result<String, StatusCode> {
     };
 }
 
+fn parse_measurements(tags: String) -> Option<Vec<String>> {
+    let result: Value = serde_json::from_str(&tags).ok()?;
+    let results = result.get("results")?;
+    let first = results.get(0)?;
+    let series = first.get("series")?;
+    let first = series.get(0)?;
+    let values: &Value = first.get("values")?;
+    let values = values.as_array()?;
+    let values: Option<Vec<_>> = values
+        .iter()
+        .map(|value| Some(value.get(0)?.as_str()?.to_owned()))
+        .collect();
+
+    return values;
+}
+
+async fn measurements(State(state): State<AppState>) -> Result<Json<Vec<String>>, StatusCode> {
+    let bucket = state.client.database_name();
+
+    let query = ReadQuery::new(format!("SHOW MEASUREMENTS ON \"{}\"", bucket));
+    let result = state
+        .client
+        .query(query)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    return parse_measurements(result)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND);
+}
+
 fn parse_tags(tags: String) -> Option<Vec<String>> {
     let result: Value = serde_json::from_str(&tags).ok()?;
     let results = result.get("results")?;
@@ -197,6 +228,7 @@ async fn main() -> Result<()> {
 
     let app = Router::new()
         .route("/ping", get(ping).with_state(state.clone()))
+        .route("/measurements", get(measurements).with_state(state.clone()))
         .route("/tags/:tag", get(tags).with_state(state.clone()))
         .route("/data/:measurement", get(data).with_state(state.clone()))
         .layer(CorsLayer::permissive());
