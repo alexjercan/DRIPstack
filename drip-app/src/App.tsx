@@ -15,7 +15,7 @@ const fetchDates = async (room: string): Promise<string[]> => {
 
 const fetchData = async (room: string, date: string): Promise<any> => {
     return (
-        await fetch(`http://localhost:8080/data?room=${room}&date=${date}`)
+        await fetch(`http://localhost:8080/data/home?room=${room}&date=${date}`)
     ).json()
 }
 

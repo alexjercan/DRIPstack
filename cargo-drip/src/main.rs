@@ -162,6 +162,7 @@ fn parse_data(data: String) -> Option<HashMap<String, Vec<Value>>> {
 
 async fn data(
     State(state): State<AppState>,
+    Path(measurement): Path<String>,
     Query(query): Query<Filter>,
 ) -> Result<Json<HashMap<String, Vec<Value>>>, StatusCode> {
     let bucket = state.client.database_name();
@@ -172,7 +173,10 @@ async fn data(
         _ => format!(" WHERE {}", filter),
     };
 
-    let query = ReadQuery::new(format!("SELECT * FROM \"{}\"..home{}", bucket, filter));
+    let query = ReadQuery::new(format!(
+        "SELECT * FROM \"{}\"..{}{}",
+        bucket, measurement, filter
+    ));
     let result = state
         .client
         .query(query)
@@ -194,7 +198,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/ping", get(ping).with_state(state.clone()))
         .route("/tags/:tag", get(tags).with_state(state.clone()))
-        .route("/data", get(data).with_state(state.clone()))
+        .route("/data/:measurement", get(data).with_state(state.clone()))
         .layer(CorsLayer::permissive());
 
     axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
