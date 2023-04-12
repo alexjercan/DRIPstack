@@ -122,6 +122,26 @@ async fn tags(
     return parse_tags(result).map(Json).ok_or(StatusCode::NOT_FOUND);
 }
 
+async fn data(
+    State(state): State<AppState>,
+    Query(query): Query<Filter>,
+) -> Result<String, StatusCode> {
+    let bucket = state.client.database_name();
+    let filter = query.get_filter();
+
+    let filter = match filter.as_str() {
+        "" => String::default(),
+        _ => format!(" WHERE {}", filter),
+    };
+
+    let query = ReadQuery::new(format!("SELECT * FROM \"{}\"..home{}", bucket, filter));
+    return state
+        .client
+        .query(query)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let url = env::var("DRIP_INFLUXDB_URL").unwrap_or("http://localhost:8086".to_string());
@@ -134,6 +154,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/ping", get(ping).with_state(state.clone()))
         .route("/tags/:tag", get(tags).with_state(state.clone()))
+        .route("/data", get(data).with_state(state.clone()))
         .layer(CorsLayer::permissive());
 
     axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
