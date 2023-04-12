@@ -1,57 +1,117 @@
-import { Component, createSignal, createResource, For } from 'solid-js'
-import { CheckItem, Item } from './CheckItem'
+import { Component, createSignal, createEffect, For } from 'solid-js'
 
-const fetchTags = async (tag: string): Promise<string[]> => {
-    return (await fetch(`http://localhost:8080/tags/${tag}`)).json()
+type Item = {
+    text: string
+    selected: boolean
+}
+
+const fetchRooms = async (): Promise<string[]> => {
+    return (await fetch('http://localhost:8080/tags/room')).json()
+}
+
+const fetchDates = async (room: string): Promise<string[]> => {
+    return (await fetch(`http://localhost:8080/tags/date?room=${room}`)).json()
+}
+
+const fetchData = async (room: string, date: string): Promise<any> => {
+    return (
+        await fetch(`http://localhost:8080/data?room=${room}&date=${date}`)
+    ).json()
 }
 
 const App: Component = () => {
-    const [dates, setDates] = createSignal<Item[]>([])
     const [rooms, setRooms] = createSignal<Item[]>([])
 
-    fetchTags('date').then((dates) =>
-        setDates(dates.map((date) => ({ text: date, selected: false })))
-    )
-    fetchTags('room').then((rooms) =>
+    fetchRooms().then((rooms) =>
         setRooms(rooms.map((room) => ({ text: room, selected: false })))
     )
 
+    const [dates, setDates] = createSignal<Item[]>([])
+    createEffect(() => {
+        let room = rooms().find(({ selected }) => selected)?.text
+
+        if (room === undefined) {
+            return
+        }
+
+        fetchDates(room).then((dates) =>
+            setDates(dates.map((date) => ({ text: date, selected: false })))
+        )
+    })
+
+    const [data, setData] = createSignal({})
+    createEffect(() => {
+        let room = rooms().find(({ selected }) => selected)?.text
+        let date = dates().find(({ selected }) => selected)?.text
+
+        if (room === undefined || date === undefined) {
+            return
+        }
+
+        fetchData(room, date).then(setData)
+    })
+
     return (
         <>
-            <For each={dates()}>
-                {(item) => (
-                    <CheckItem
-                        item={item}
-                        onChange={() => {
-                            setDates((items) => {
-                                const newItems = items.map((it) =>
-                                    it === item
-                                        ? { ...it, selected: !it.selected }
-                                        : it
-                                )
-                                return newItems
-                            })
-                        }}
-                    />
-                )}
-            </For>
-            <For each={rooms()}>
-                {(item) => (
-                    <CheckItem
-                        item={item}
-                        onChange={() => {
-                            setDates((items) => {
-                                const newItems = items.map((it) =>
-                                    it === item
-                                        ? { ...it, selected: !it.selected }
-                                        : it
-                                )
-                                return newItems
-                            })
-                        }}
-                    />
-                )}
-            </For>
+            <h2>Configuration Menu</h2>
+            <div>
+                <h3>Room Selection</h3>
+                <For each={rooms()}>
+                    {(item) => (
+                        <label>
+                            <input
+                                type="radio"
+                                name="room"
+                                checked={item.selected}
+                                onChange={() => {
+                                    setRooms((items) => {
+                                        const newItems = items.map((it) =>
+                                            it === item
+                                                ? {
+                                                      ...it,
+                                                      selected: !it.selected,
+                                                  }
+                                                : it
+                                        )
+                                        return newItems
+                                    })
+                                }}
+                            />
+                            {item.text}
+                        </label>
+                    )}
+                </For>
+            </div>
+            <div>
+                <h3>Date Selection</h3>
+                <For each={dates()}>
+                    {(item) => (
+                        <label>
+                            <input
+                                type="radio"
+                                name="date"
+                                checked={item.selected}
+                                onChange={() => {
+                                    setDates((items) => {
+                                        const newItems = items.map((it) =>
+                                            it === item
+                                                ? {
+                                                      ...it,
+                                                      selected: !it.selected,
+                                                  }
+                                                : it
+                                        )
+                                        return newItems
+                                    })
+                                }}
+                            />
+                            {item.text}
+                        </label>
+                    )}
+                </For>
+            </div>
+            <h2>Visualization</h2>
+            <div>{JSON.stringify(data())}</div>
         </>
     )
 }
