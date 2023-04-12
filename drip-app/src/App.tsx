@@ -1,4 +1,5 @@
 import { Component, createSignal, createEffect, For } from 'solid-js'
+import Visualization, { Data } from './Visualization'
 
 type Item = {
     text: string
@@ -13,10 +14,10 @@ const fetchDates = async (room: string): Promise<string[]> => {
     return (await fetch(`http://localhost:8080/tags/date?room=${room}`)).json()
 }
 
-const fetchData = async (room: string, date: string): Promise<any> => {
-    return (
+const fetchData = async (room: string, date: string): Promise<Data> => {
+    return (await (
         await fetch(`http://localhost:8080/data/home?room=${room}&date=${date}`)
-    ).json()
+    ).json()) as Data
 }
 
 const App: Component = () => {
@@ -39,7 +40,7 @@ const App: Component = () => {
         )
     })
 
-    const [data, setData] = createSignal({})
+    const [data, setData] = createSignal<Data>({})
     createEffect(() => {
         let room = rooms().find(({ selected }) => selected)?.text
         let date = dates().find(({ selected }) => selected)?.text
@@ -68,7 +69,7 @@ const App: Component = () => {
                                         const newItems = items.slice()
                                         const index = newItems.indexOf(item)
                                         newItems.forEach((it, i) => {
-                                          it.selected = i === index
+                                            it.selected = i === index
                                         })
                                         return newItems
                                     })
@@ -93,7 +94,7 @@ const App: Component = () => {
                                         const newItems = items.slice()
                                         const index = newItems.indexOf(item)
                                         newItems.forEach((it, i) => {
-                                          it.selected = i === index
+                                            it.selected = i === index
                                         })
                                         return newItems
                                     })
@@ -105,7 +106,9 @@ const App: Component = () => {
                 </For>
             </div>
             <h2>Visualization</h2>
-            <div>{JSON.stringify(data())}</div>
+            <div>
+                <Visualization data={data()} />
+            </div>
         </>
     )
 }
