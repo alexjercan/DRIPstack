@@ -122,10 +122,48 @@ async fn tags(
     return parse_tags(result).map(Json).ok_or(StatusCode::NOT_FOUND);
 }
 
+fn parse_data(data: String) -> Option<HashMap<String, Vec<Value>>> {
+    let result: Value = serde_json::from_str(&data).ok()?;
+    let results = result.get("results")?;
+    let first = results.get(0)?;
+    let series = first.get("series")?;
+    let first = series.get(0)?.to_owned();
+
+    let columns = first
+        .get("columns")?
+        .as_array()?
+        .iter()
+        .map(|value| Some(value.as_str()?.to_owned()))
+        .collect::<Option<Vec<_>>>()?;
+
+    let values = first
+        .get("values")?
+        .as_array()?
+        .iter()
+        .map(|value| value.as_array())
+        .collect::<Option<Vec<&Vec<_>>>>()?;
+
+    let data: HashMap<String, Vec<Value>> = values
+        .into_iter()
+        .flat_map(|row| {
+            return columns
+                .iter()
+                .zip(row.iter())
+                .collect::<Vec<(&String, &Value)>>();
+        })
+        .fold(HashMap::new(), |mut acc, (k, v)| {
+            acc.entry(k.clone()).or_default().push(v.clone());
+
+            return acc;
+        });
+
+    return Some(data);
+}
+
 async fn data(
     State(state): State<AppState>,
     Query(query): Query<Filter>,
-) -> Result<String, StatusCode> {
+) -> Result<Json<HashMap<String, Vec<Value>>>, StatusCode> {
     let bucket = state.client.database_name();
     let filter = query.get_filter();
 
@@ -135,11 +173,13 @@ async fn data(
     };
 
     let query = ReadQuery::new(format!("SELECT * FROM \"{}\"..home{}", bucket, filter));
-    return state
+    let result = state
         .client
         .query(query)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    return parse_data(result).map(Json).ok_or(StatusCode::NOT_FOUND);
 }
 
 #[tokio::main]
