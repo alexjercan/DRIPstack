@@ -65,14 +65,11 @@ const App: Component = () => {
                                 checked={item.selected}
                                 onChange={() => {
                                     setRooms((items) => {
-                                        const newItems = items.map((it) =>
-                                            it === item
-                                                ? {
-                                                      ...it,
-                                                      selected: !it.selected,
-                                                  }
-                                                : it
-                                        )
+                                        const newItems = items.slice()
+                                        const index = newItems.indexOf(item)
+                                        newItems.forEach((it, i) => {
+                                          it.selected = i === index
+                                        })
                                         return newItems
                                     })
                                 }}
@@ -93,14 +90,11 @@ const App: Component = () => {
                                 checked={item.selected}
                                 onChange={() => {
                                     setDates((items) => {
-                                        const newItems = items.map((it) =>
-                                            it === item
-                                                ? {
-                                                      ...it,
-                                                      selected: !it.selected,
-                                                  }
-                                                : it
-                                        )
+                                        const newItems = items.slice()
+                                        const index = newItems.indexOf(item)
+                                        newItems.forEach((it, i) => {
+                                          it.selected = i === index
+                                        })
                                         return newItems
                                     })
                                 }}
