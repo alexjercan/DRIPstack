@@ -15,12 +15,20 @@ const fetchDates = async (project: string): Promise<string[]> => {
 }
 
 const fetchRooms = async (project: string, date: string): Promise<string[]> => {
-    return (await fetch(`http://localhost:8080/tags/${project}/room?date=${date}`)).json()
+    return (
+        await fetch(`http://localhost:8080/tags/${project}/room?date=${date}`)
+    ).json()
 }
 
-const fetchData = async (project: string, date: string, room: string): Promise<RoomData> => {
+const fetchData = async (
+    project: string,
+    date: string,
+    room: string
+): Promise<RoomData> => {
     return (await (
-        await fetch(`http://localhost:8080/data/${project}?date=${date}&room=${room}`)
+        await fetch(
+            `http://localhost:8080/data/${project}?date=${date}&room=${room}`
+        )
     ).json()) as RoomData
 }
 
@@ -30,7 +38,9 @@ const App: Component = () => {
     const [data, setData] = createSignal<Data>({})
 
     fetchProjects().then((projects) =>
-        setProjects(projects.map((project) => ({text: project, selected: false})))
+        setProjects(
+            projects.map((project) => ({ text: project, selected: false }))
+        )
     )
 
     createEffect(() => {
@@ -58,7 +68,7 @@ const App: Component = () => {
         }
 
         let newData: Data = {}
-        let rooms = await fetchRooms(project, date);
+        let rooms = await fetchRooms(project, date)
         for (let room of rooms) {
             newData[room] = await fetchData(project, date, room)
         }
