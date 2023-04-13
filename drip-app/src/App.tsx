@@ -1,71 +1,91 @@
 import { Component, createSignal, createEffect, For } from 'solid-js'
-import Visualization, { Data } from './Visualization'
+import Visualization, { RoomData, Data } from './Visualization'
 
 type Item = {
     text: string
     selected: boolean
 }
 
-const fetchRooms = async (): Promise<string[]> => {
-    return (await fetch('http://localhost:8080/tags/room')).json()
+const fetchProjects = async (): Promise<string[]> => {
+    return (await fetch('http://localhost:8080/measurements')).json()
 }
 
-const fetchDates = async (room: string): Promise<string[]> => {
-    return (await fetch(`http://localhost:8080/tags/date?room=${room}`)).json()
+const fetchDates = async (project: string): Promise<string[]> => {
+    return (await fetch(`http://localhost:8080/tags/${project}/date`)).json()
 }
 
-const fetchData = async (room: string, date: string): Promise<Data> => {
+const fetchRooms = async (project: string, date: string): Promise<string[]> => {
+    return (await fetch(`http://localhost:8080/tags/${project}/room?date=${date}`)).json()
+}
+
+const fetchData = async (project: string, date: string, room: string): Promise<RoomData> => {
     return (await (
-        await fetch(`http://localhost:8080/data/home?room=${room}&date=${date}`)
-    ).json()) as Data
+        await fetch(`http://localhost:8080/data/${project}?date=${date}&room=${room}`)
+    ).json()) as RoomData
 }
 
 const App: Component = () => {
-    const [rooms, setRooms] = createSignal<Item[]>([])
+    const [projects, setProjects] = createSignal<Item[]>([])
 
-    fetchRooms().then((rooms) =>
-        setRooms(rooms.map((room) => ({ text: room, selected: false })))
+    fetchProjects().then((projects) =>
+        setProjects(projects.map((project) => ({text: project, selected: false})))
     )
 
     const [dates, setDates] = createSignal<Item[]>([])
     createEffect(() => {
-        let room = rooms().find(({ selected }) => selected)?.text
+        let project = projects().find(({ selected }) => selected)?.text
 
-        if (room === undefined) {
+        if (project === undefined) {
             return
         }
 
-        fetchDates(room).then((dates) =>
+        fetchDates(project).then((dates) =>
             setDates(dates.map((date) => ({ text: date, selected: false })))
         )
     })
 
-    const [data, setData] = createSignal<Data>({})
+    const [rooms, setRooms] = createSignal<string[]>([])
     createEffect(() => {
-        let room = rooms().find(({ selected }) => selected)?.text
+        let project = projects().find(({ selected }) => selected)?.text
         let date = dates().find(({ selected }) => selected)?.text
 
-        if (room === undefined || date === undefined) {
+        if (project === undefined || date === undefined) {
             return
         }
 
-        fetchData(room, date).then(setData)
+        fetchRooms(project, date).then(setRooms)
+    })
+
+    const [data, setData] = createSignal<Data>({})
+    createEffect(async () => {
+        let project = projects().find(({ selected }) => selected)?.text
+        let date = dates().find(({ selected }) => selected)?.text
+
+        if (project === undefined || date === undefined) {
+            return
+        }
+
+        let newData: Data = {}
+        for (let room of rooms()) {
+            newData[room] = await fetchData(project, date, room)
+        }
+        setData(newData)
     })
 
     return (
         <>
             <h2>Configuration Menu</h2>
             <div>
-                <h3>Room Selection</h3>
-                <For each={rooms()}>
+                <h3>Project Selection</h3>
+                <For each={projects()}>
                     {(item) => (
                         <label>
                             <input
                                 type="radio"
-                                name="room"
+                                name="project"
                                 checked={item.selected}
                                 onChange={() => {
-                                    setRooms((items) => {
+                                    setProjects((items) => {
                                         const newItems = items.slice()
                                         const index = newItems.indexOf(item)
                                         newItems.forEach((it, i) => {

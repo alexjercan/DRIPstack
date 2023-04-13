@@ -3,8 +3,12 @@ import * as Plotly from 'plotly.js-basic-dist'
 
 type Value = string | number | boolean | null
 
-export type Data = {
+export type RoomData = {
     [key: string]: Value[]
+}
+
+export type Data = {
+    [key: string]: RoomData
 }
 
 type Props = {
@@ -15,12 +19,18 @@ const Visualization: Component<Props> = (props: Props) => {
     let plot_div_id = 'plot_div_' + Math.random()
 
     createEffect(() => {
-        let x = props.data["time"] as string[];
-        let y = props.data["co"] as number[];
+        let data: Plotly.Data[] = [];
+        for (let room in props.data) {
+            let x = props.data[room]["time"] as string[];
+            let y = props.data[room]["co"] as number[];
+
+            data.push({x, y, type: 'scatter', name: room})
+        }
+
         Plotly.newPlot(
             plot_div_id,
-            [{ x, y, type: 'scatter' }],
-            { title: 'My Plot' },
+            data,
+            { title: 'co levels', showlegend: true },
             { responsive: true }
         )
     })

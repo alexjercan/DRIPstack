@@ -129,7 +129,7 @@ fn parse_tags(tags: String) -> Option<Vec<String>> {
 
 async fn tags(
     State(state): State<AppState>,
-    Path(tag): Path<String>,
+    Path((measurement, tag)): Path<(String, String)>,
     Query(query): Query<Filter>,
 ) -> Result<Json<Vec<String>>, StatusCode> {
     let bucket = state.client.database_name();
@@ -141,8 +141,8 @@ async fn tags(
     };
 
     let query = ReadQuery::new(format!(
-        "SHOW TAG VALUES ON \"{}\" WITH KEY = \"{}\"{}",
-        bucket, tag, filter
+        "SHOW TAG VALUES ON \"{}\" FROM \"{}\" WITH KEY = \"{}\"{}",
+        bucket, measurement, tag, filter
     ));
     let result = state
         .client
@@ -229,7 +229,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/ping", get(ping).with_state(state.clone()))
         .route("/measurements", get(measurements).with_state(state.clone()))
-        .route("/tags/:tag", get(tags).with_state(state.clone()))
+        .route("/tags/:measurement/:tag", get(tags).with_state(state.clone()))
         .route("/data/:measurement", get(data).with_state(state.clone()))
         .layer(CorsLayer::permissive());
 
