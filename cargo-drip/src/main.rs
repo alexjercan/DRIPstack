@@ -229,7 +229,10 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/ping", get(ping).with_state(state.clone()))
         .route("/measurements", get(measurements).with_state(state.clone()))
-        .route("/tags/:measurement/:tag", get(tags).with_state(state.clone()))
+        .route(
+            "/tags/:measurement/:tag",
+            get(tags).with_state(state.clone()),
+        )
         .route("/data/:measurement", get(data).with_state(state.clone()))
         .layer(CorsLayer::permissive());
 
