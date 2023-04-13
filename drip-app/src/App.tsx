@@ -27,7 +27,6 @@ const fetchData = async (project: string, date: string, room: string): Promise<R
 const App: Component = () => {
     const [projects, setProjects] = createSignal<Item[]>([])
     const [dates, setDates] = createSignal<Item[]>([])
-    const [rooms, setRooms] = createSignal<string[]>([])
     const [data, setData] = createSignal<Data>({})
 
     fetchProjects().then((projects) =>
@@ -35,10 +34,12 @@ const App: Component = () => {
     )
 
     createEffect(() => {
+        setDates([])
+
         let project = projects().find(({ selected }) => selected)?.text
 
         if (project === undefined) {
-            return setDates([])
+            return
         }
 
         fetchDates(project).then((dates) =>
@@ -46,27 +47,19 @@ const App: Component = () => {
         )
     })
 
-    createEffect(() => {
-        let project = projects().find(({ selected }) => selected)?.text
-        let date = dates().find(({ selected }) => selected)?.text
-
-        if (project === undefined || date === undefined) {
-            return setRooms([])
-        }
-
-        fetchRooms(project, date).then(setRooms)
-    })
-
     createEffect(async () => {
+        setData({})
+
         let project = projects().find(({ selected }) => selected)?.text
         let date = dates().find(({ selected }) => selected)?.text
 
         if (project === undefined || date === undefined) {
-            return setData({})
+            return
         }
 
         let newData: Data = {}
-        for (let room of rooms()) {
+        let rooms = await fetchRooms(project, date);
+        for (let room of rooms) {
             newData[room] = await fetchData(project, date, room)
         }
         setData(newData)
