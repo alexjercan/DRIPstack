@@ -8,6 +8,7 @@ import {
 } from 'solid-js'
 import Visualization, { RoomData, Data } from './Visualization'
 import Selector, { Item, Tag } from './Selector'
+import { tags } from './tags'
 
 const fetchProjects = async (): Promise<string[]> => {
     return (await fetch('http://localhost:8080/measurements')).json()
@@ -40,10 +41,6 @@ const App: Component = () => {
     const [projects, setProjects] = createSignal<Item[]>([])
     const [data, setData] = createSignal<Data>({})
 
-    const tags: Tag[] = [
-        { name: 'date', type: 'single' },
-        { name: 'room', type: 'multi' },
-    ]
     let dependencies: string[] = []
     let signals: Signals<Item[]> = {}
     for (let tag of tags) {
