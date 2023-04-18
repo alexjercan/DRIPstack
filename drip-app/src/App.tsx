@@ -1,41 +1,88 @@
-import { Component, createSignal, createEffect, For } from 'solid-js'
+import {
+    Component,
+    createSignal,
+    createEffect,
+    For,
+    Accessor,
+    Setter,
+} from 'solid-js'
 import Visualization, { RoomData, Data } from './Visualization'
-
-type Item = {
-    text: string
-    selected: boolean
-}
+import Selector, { Item, Tag } from './Selector'
 
 const fetchProjects = async (): Promise<string[]> => {
     return (await fetch('http://localhost:8080/measurements')).json()
 }
 
-const fetchDates = async (project: string): Promise<string[]> => {
-    return (await fetch(`http://localhost:8080/tags/${project}/date`)).json()
-}
-
-const fetchRooms = async (project: string, date: string): Promise<string[]> => {
+const fetchTagValues = async (
+    name: string,
+    project: string,
+    params: string
+): Promise<string[]> => {
     return (
-        await fetch(`http://localhost:8080/tags/${project}/room?date=${date}`)
+        await fetch(`http://localhost:8080/tags/${project}/${name}?${params}`)
     ).json()
 }
 
 const fetchData = async (
     project: string,
-    date: string,
-    room: string
+    params: string
 ): Promise<RoomData> => {
     return (await (
-        await fetch(
-            `http://localhost:8080/data/${project}?date=${date}&room=${room}`
-        )
+        await fetch(`http://localhost:8080/data/${project}?${params}`)
     ).json()) as RoomData
+}
+
+type Signals<T> = {
+    [key: string]: [Accessor<T>, Setter<T>, Tag, string[]]
 }
 
 const App: Component = () => {
     const [projects, setProjects] = createSignal<Item[]>([])
-    const [dates, setDates] = createSignal<Item[]>([])
     const [data, setData] = createSignal<Data>({})
+
+    const tags: Tag[] = [
+        { name: 'date', type: 'single' },
+        { name: 'room', type: 'multi' },
+    ]
+    let dependencies: string[] = []
+    let signals: Signals<Item[]> = {}
+    for (let tag of tags) {
+        const { name } = tag
+        const [signal, setSignal] = createSignal<Item[]>([])
+
+        signals[name] = [signal, setSignal, tag, [...dependencies]]
+
+        createEffect(() => {
+            setSignal([])
+
+            let project = projects().find(({ selected }) => selected)?.text
+
+            if (project === undefined) {
+                return
+            }
+
+            let querries: string[] = []
+            for (let dependency of signals[name][3]) {
+                const [dSignal] = signals[dependency]
+                let dItems = dSignal().filter(({ selected }) => selected)
+                if (dItems.length === 0) {
+                    return
+                }
+                for (let { text } of dItems) {
+                    querries.push(`${dependency}=${text}`)
+                }
+            }
+            let params = querries.join('&')
+
+            fetchTagValues(name, project, params).then((values) =>
+                setSignal(
+                    values.map((value) => ({ text: value, selected: false }))
+                )
+            )
+        })
+
+        dependencies.push(name)
+    }
 
     fetchProjects().then((projects) =>
         setProjects(
@@ -43,8 +90,8 @@ const App: Component = () => {
         )
     )
 
-    createEffect(() => {
-        setDates([])
+    createEffect(async () => {
+        setData({})
 
         let project = projects().find(({ selected }) => selected)?.text
 
@@ -52,25 +99,25 @@ const App: Component = () => {
             return
         }
 
-        fetchDates(project).then((dates) =>
-            setDates(dates.map((date) => ({ text: date, selected: false })))
-        )
-    })
-
-    createEffect(async () => {
-        setData({})
-
-        let project = projects().find(({ selected }) => selected)?.text
-        let date = dates().find(({ selected }) => selected)?.text
-
-        if (project === undefined || date === undefined) {
-            return
+        let querries: string[] = []
+        for (let dependency of dependencies.slice(0, -1)) {
+            const [dSignal] = signals[dependency]
+            let dItems = dSignal().filter(({ selected }) => selected)
+            if (dItems.length === 0) {
+                return
+            }
+            for (let { text } of dItems) {
+                querries.push(`${dependency}=${text}`)
+            }
         }
+        let params = querries.join('&')
 
         let newData: Data = {}
-        let rooms = await fetchRooms(project, date)
-        for (let room of rooms) {
-            newData[room] = await fetchData(project, date, room)
+        let dependency = dependencies[dependencies.length - 1]
+        const [dSignal] = signals[dependency]
+        let dItems = dSignal().filter(({ selected }) => selected)
+        for (let { text } of dItems) {
+            newData[text] = await fetchData(project, [params, text].join('&'))
         }
         setData(newData)
     })
@@ -78,56 +125,22 @@ const App: Component = () => {
     return (
         <>
             <h2>Configuration Menu</h2>
-            <div>
-                <h3>Project Selection</h3>
-                <For each={projects()}>
-                    {(item) => (
-                        <label>
-                            <input
-                                type="radio"
-                                name="project"
-                                checked={item.selected}
-                                onChange={() => {
-                                    setProjects((items) => {
-                                        const newItems = items.slice()
-                                        const index = newItems.indexOf(item)
-                                        newItems.forEach((it, i) => {
-                                            it.selected = i === index
-                                        })
-                                        return newItems
-                                    })
-                                }}
-                            />
-                            {item.text}
-                        </label>
-                    )}
-                </For>
-            </div>
-            <div>
-                <h3>Date Selection</h3>
-                <For each={dates()}>
-                    {(item) => (
-                        <label>
-                            <input
-                                type="radio"
-                                name="date"
-                                checked={item.selected}
-                                onChange={() => {
-                                    setDates((items) => {
-                                        const newItems = items.slice()
-                                        const index = newItems.indexOf(item)
-                                        newItems.forEach((it, i) => {
-                                            it.selected = i === index
-                                        })
-                                        return newItems
-                                    })
-                                }}
-                            />
-                            {item.text}
-                        </label>
-                    )}
-                </For>
-            </div>
+            <Selector
+                tags={projects}
+                setTags={setProjects}
+                tag={{ name: 'project', type: 'single' }}
+            />
+
+            <For each={dependencies}>
+                {(item) => (
+                    <Selector
+                        tags={signals[item][0]}
+                        setTags={signals[item][1]}
+                        tag={signals[item][2]}
+                    />
+                )}
+            </For>
+
             <h2>Visualization</h2>
             <div>
                 <Visualization data={data()} />
