@@ -144,7 +144,7 @@ const App: Component = () => {
             <h2>Visualization</h2>
             <div>
                 <For each={widgets()}>
-                    {() => <Visualization data={data()} type={undefined} />}
+                    {() => <Visualization data={data()} />}
                 </For>
                 <button
                     onClick={() => setWidgets([...widgets(), widgets().length])}

@@ -1,40 +1,74 @@
-import { Component, createEffect } from 'solid-js'
+import {
+    Component,
+    createEffect,
+    createMemo,
+    createSignal,
+    Show,
+} from 'solid-js'
 import * as Plotly from 'plotly.js-basic-dist'
 import { Data } from './types'
+import Selector, { Item } from './Selector'
 
-export type ScatterConifg = {
+let plot_div_id = 'plot_div_' + Math.random()
+
+let colors = [
+    '#1F77B4', // muted blue
+    '#FF7F0E', // safety orange
+    '#2CA02C', // cooked asparagus green
+    '#D62728', // brick red
+    '#9467BD', // muted purple
+    '#8C564B', // chestnut brown
+    '#E377C2', // raspberry yogurt pink
+    '#7F7F7F', // middle gray
+    '#BCBD22', // curry yellow-green
+    '#17BECF', // blue-teal
+]
+
+type ScatterConifg = {
     xaxes: string
     yaxes: string
 }
 
 type ScatterProps = {
-    config: ScatterConifg
     data: Data
 }
 
 const Scatter: Component<ScatterProps> = (props: ScatterProps) => {
-    let plot_div_id = 'plot_div_' + Math.random()
+    const columns = createMemo(() => {
+        let columns = new Set<string>()
+        for (let sensor in props.data) {
+            let data = props.data[sensor]
+            for (let column in data) {
+                columns.add(column)
+            }
+        }
+        return Array.from(columns).map((column) => ({ text: column, selected: false }))
+    })
 
-    let colors = [
-        '#1F77B4', // muted blue
-        '#FF7F0E', // safety orange
-        '#2CA02C', // cooked asparagus green
-        '#D62728', // brick red
-        '#9467BD', // muted purple
-        '#8C564B', // chestnut brown
-        '#E377C2', // raspberry yogurt pink
-        '#7F7F7F', // middle gray
-        '#BCBD22', // curry yellow-green
-        '#17BECF', // blue-teal
-    ]
+    const [xColumns, setXColumns] = createSignal<Item[]>(columns())
+    const [yColumns, setYColumns] = createSignal<Item[]>(columns())
+
+    const xaxes = createMemo(
+        () => xColumns().find(({ selected }) => selected)?.text
+    )
+    const yaxes = createMemo(
+        () => yColumns().find(({ selected }) => selected)?.text
+    )
 
     createEffect(() => {
+        let xaxesValue = xaxes()
+        let yaxesValue = yaxes()
+
+        if (xaxesValue === undefined || yaxesValue === undefined) {
+            return
+        }
+
         let color = 0
 
         let data: Plotly.Data[] = []
         for (let sensor in props.data) {
-            let x = props.data[sensor][props.config.xaxes]
-            let y = props.data[sensor][props.config.yaxes]
+            let x = props.data[sensor][xaxesValue]
+            let y = props.data[sensor][yaxesValue]
 
             data.push({
                 x,
@@ -58,11 +92,11 @@ const Scatter: Component<ScatterProps> = (props: ScatterProps) => {
             {
                 title: { text: 'Scatter Plot' },
                 xaxis: {
-                    title: { text: props.config.xaxes },
+                    title: { text: xaxesValue },
                     showticklabels: true,
                 },
                 yaxis: {
-                    title: { text: props.config.yaxes },
+                    title: { text: yaxesValue },
                 },
                 autosize: true,
                 height: 700,
@@ -81,7 +115,23 @@ const Scatter: Component<ScatterProps> = (props: ScatterProps) => {
         )
     })
 
-    return <div id={plot_div_id} />
+    return (
+        <>
+            <Show when={xaxes() === undefined || yaxes() === undefined}>
+                <Selector
+                    tags={xColumns}
+                    setTags={setXColumns}
+                    tag={{ name: 'xaxes', type: 'single' }}
+                />
+                <Selector
+                    tags={yColumns}
+                    setTags={setYColumns}
+                    tag={{ name: 'yaxes', type: 'single' }}
+                />
+            </Show>
+            <div id={plot_div_id} />
+        </>
+    )
 }
 
 export default Scatter

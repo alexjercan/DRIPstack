@@ -3,10 +3,9 @@ import Scatter from './Scatter'
 import Selector from './Selector'
 import { Data } from './types'
 
-export type Type = 'scatter' | 'hist' | undefined
+type Type = 'scatter' | 'hist' | undefined
 
 type Props = {
-    type: Type
     data: Data
 }
 
@@ -32,14 +31,14 @@ const Visualization: Component<Props> = (props: Props) => {
                 <Match when={type() === 'scatter'}>
                     {Scatter({
                         // TODO: these are hardcoded fix
-                        config: { xaxes: 'time', yaxes: 'co' },
+                        // config: { xaxes: 'time', yaxes: 'co' },
                         data: props.data,
                     })}
                 </Match>
                 <Match when={type() === 'hist'}>
                     {Scatter({
                         // TODO: this should be a histogram but meh
-                        config: { xaxes: 'time', yaxes: 'temp' },
+                        // config: { xaxes: 'time', yaxes: 'temp' },
                         data: props.data,
                     })}
                 </Match>
