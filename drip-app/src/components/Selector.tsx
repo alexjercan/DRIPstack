@@ -18,9 +18,9 @@ type Props = {
 
 const Selector: Component<Props> = (props: Props) => {
     if (props.tag.type === 'single') {
-        return SelectorSingle(props);
-    } else{
-        return SelectorMulti(props);
+        return SelectorSingle(props)
+    } else {
+        return SelectorMulti(props)
     }
 }
 

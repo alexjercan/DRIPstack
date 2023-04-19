@@ -6,8 +6,9 @@ import {
     Accessor,
     Setter,
 } from 'solid-js'
-import Visualization, { RoomData, Data } from './Visualization'
-import Selector, { Item, Tag } from './Selector'
+import Visualization from './components/Visualization'
+import { SensorData, Data } from './components/types'
+import Selector, { Item, Tag } from './components/Selector'
 import { tags } from './tags'
 
 const fetchProjects = async (): Promise<string[]> => {
@@ -27,10 +28,10 @@ const fetchTagValues = async (
 const fetchData = async (
     project: string,
     params: string
-): Promise<RoomData> => {
+): Promise<SensorData> => {
     return (await (
         await fetch(`http://localhost:8080/data/${project}?${params}`)
-    ).json()) as RoomData
+    ).json()) as SensorData
 }
 
 type Signals<T> = {
@@ -119,6 +120,8 @@ const App: Component = () => {
         setData(newData)
     })
 
+    const [widgets, setWidgets] = createSignal<number[]>([])
+
     return (
         <>
             <h2>Configuration Menu</h2>
@@ -140,7 +143,14 @@ const App: Component = () => {
 
             <h2>Visualization</h2>
             <div>
-                <Visualization data={data()} />
+                <For each={widgets()}>
+                    {() => <Visualization data={data()} type={undefined} />}
+                </For>
+                <button
+                    onClick={() => setWidgets([...widgets(), widgets().length])}
+                >
+                    Add a new component
+                </button>
             </div>
         </>
     )
