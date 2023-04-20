@@ -205,7 +205,7 @@ async fn data(
     };
 
     let query = ReadQuery::new(format!(
-        "SELECT * FROM \"{}\"..{}{}",
+        "SELECT *::field FROM \"{}\"..{}{}",
         bucket, measurement, filter
     ));
     let result = state
