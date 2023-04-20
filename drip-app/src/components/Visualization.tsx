@@ -1,48 +1,24 @@
-import { Component, createMemo, createSignal, Match, Switch } from 'solid-js'
-import Scatter from './Scatter'
-import Selector from './Selector'
+import { Component, createSignal, For } from 'solid-js'
 import { Data } from './types'
-
-type Type = 'scatter' | 'hist' | undefined
+import Widget from './Widget'
 
 type Props = {
     data: Data
 }
 
 const Visualization: Component<Props> = (props: Props) => {
-    const [types, setTypes] = createSignal([
-        { text: 'scatter', selected: false },
-        { text: 'hist', selected: false },
-    ])
-    const type = createMemo(() => {
-        return types().find(({ selected }) => selected)?.text as Type
-    })
+    const [widgets, setWidgets] = createSignal<(typeof Widget)[]>([])
 
     return (
         <>
-            <Switch>
-                <Match when={type() === undefined}>
-                    <Selector
-                        tags={types}
-                        setTags={setTypes}
-                        tag={{ name: 'type', type: 'single' }}
-                    />
-                </Match>
-                <Match when={type() === 'scatter'}>
-                    {Scatter({
-                        // TODO: these are hardcoded fix
-                        // config: { xaxes: 'time', yaxes: 'co' },
-                        data: props.data,
-                    })}
-                </Match>
-                <Match when={type() === 'hist'}>
-                    {Scatter({
-                        // TODO: this should be a histogram but meh
-                        // config: { xaxes: 'time', yaxes: 'temp' },
-                        data: props.data,
-                    })}
-                </Match>
-            </Switch>
+            <div>
+                <For each={widgets()}>
+                    {(widget) => widget({ data: props.data })}
+                </For>
+                <button onClick={() => setWidgets([...widgets(), Widget])}>
+                    Add a new component
+                </button>
+            </div>
         </>
     )
 }

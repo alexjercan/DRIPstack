@@ -1,83 +1,28 @@
-import { Accessor, Component, For, Setter } from 'solid-js'
+import { For, Setter } from 'solid-js'
 
-export type Tag = {
-    name: string
-    type: 'single' | 'multi'
+type Props<T> = {
+    value?: T
+    values: T[]
+    setValue: (v?: T) => void
+    title: string
 }
 
-export type Item = {
-    text: string
-    selected: boolean
-}
-
-type Props = {
-    tags: Accessor<Item[]>
-    setTags: Setter<Item[]>
-    tag: Tag
-}
-
-const Selector: Component<Props> = (props: Props) => {
-    if (props.tag.type === 'single') {
-        return SelectorSingle(props)
-    } else {
-        return SelectorMulti(props)
-    }
-}
-
-const SelectorSingle: Component<Props> = (props: Props) => {
+const Selector = <T extends unknown>(props: Props<T>) => {
     return (
         <div>
-            <h3>{props.tag.name} Selection</h3>
-            <For each={props.tags()}>
+            <h3>{props.title}</h3>
+            <For each={props.values}>
                 {(item) => (
                     <label>
                         <input
                             type="radio"
-                            name={props.tag.name}
-                            checked={item.selected}
+                            name={props.title}
+                            checked={item === props.value}
                             onChange={() => {
-                                props.setTags((items) => {
-                                    const newItems = items.slice()
-                                    const index = newItems.indexOf(item)
-                                    newItems.forEach((it, i) => {
-                                        it.selected = i === index
-                                    })
-                                    return newItems
-                                })
+                                props.setValue(item)
                             }}
                         />
-                        {item.text}
-                    </label>
-                )}
-            </For>
-        </div>
-    )
-}
-
-const SelectorMulti: Component<Props> = (props: Props) => {
-    return (
-        <div>
-            <h3>{props.tag.name} Selection</h3>
-            <For each={props.tags()}>
-                {(item) => (
-                    <label>
-                        <input
-                            type="checkbox"
-                            checked={item.selected}
-                            onChange={() => {
-                                props.setTags((items) => {
-                                    const newItems = items.slice()
-                                    const index = newItems.indexOf(item)
-                                    newItems.forEach((it, i) => {
-                                        if (i === index) {
-                                            it.selected = !it.selected
-                                        }
-                                    })
-                                    return newItems
-                                })
-                            }}
-                        />
-                        {item.text}
+                        {item as string}
                     </label>
                 )}
             </For>
