@@ -13,7 +13,7 @@ const Visualization: Component<Props> = (props: Props) => {
         <>
             <div>
                 <For each={widgets()}>
-                    {(widget) => widget({ data: props.data })}
+                    {(widget) => widget(props)}
                 </For>
                 <button onClick={() => setWidgets([...widgets(), Widget])}>
                     Add a new component

@@ -1,4 +1,5 @@
 import { Component, createMemo, createSignal, Match, Switch } from 'solid-js'
+import Histogram from './Histogram'
 import Scatter from './Scatter'
 import Selector from './Selector'
 import { Data } from './types'
@@ -27,7 +28,9 @@ const Widget: Component<Props> = (props: Props) => {
                 <Match when={type() === 'scatter'}>
                     <Scatter data={props.data} />
                 </Match>
-                <Match when={type() === 'hist'}>"Hist"</Match>
+                <Match when={type() === 'hist'}>
+                    <Histogram data={props.data} />
+                </Match>
             </Switch>
         </>
     )

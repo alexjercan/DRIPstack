@@ -13,12 +13,7 @@ type Props = {
     data: Data
 }
 
-const scatter = (
-    data: Data,
-    plot_div_id: string,
-    xaxis: string,
-    yaxis: string
-) => {
+const histogram = (data: Data, plot_div_id: string, xaxis: string) => {
     let color = 0
     let colors = [
         '#1F77B4', // muted blue
@@ -36,18 +31,18 @@ const scatter = (
     let traces: Plotly.Data[] = []
     for (let sensor in data) {
         let x = data[sensor][xaxis]
-        let y = data[sensor][yaxis]
 
         traces.push({
             x,
-            y,
-            type: 'scatter',
+            type: 'histogram',
+            mode: 'markers',
             name: sensor,
             showlegend: true,
-            line: {
+            marker: {
                 color: colors[color],
             },
         })
+
 
         color += 1
     }
@@ -56,13 +51,13 @@ const scatter = (
         plot_div_id,
         traces,
         {
-            title: { text: `Scatter Plot ${yaxis} vs ${xaxis}` },
+            title: { text: `Histogram of ${xaxis}` },
             xaxis: {
                 title: { text: xaxis },
                 showticklabels: true,
             },
             yaxis: {
-                title: { text: yaxis },
+                title: { text: 'count' },
             },
             autosize: true,
             height: 700,
@@ -81,7 +76,7 @@ const scatter = (
     )
 }
 
-const Scatter: Component<Props> = (props: Props) => {
+const Histogram: Component<Props> = (props: Props) => {
     const plot_div_id = createMemo(() => 'plot_div_' + Math.random())
     const columns = createMemo(() => {
         let columns = new Set<string>()
@@ -95,34 +90,26 @@ const Scatter: Component<Props> = (props: Props) => {
     })
 
     const [xaxis, setXaxis] = createSignal<string | undefined>()
-    const [yaxis, setYaxis] = createSignal<string | undefined>()
 
     createEffect(() => {
         let selectedXaxis = xaxis()
-        let selectedYaxis = yaxis()
         let div_id = plot_div_id()
 
-        if (selectedXaxis === undefined || selectedYaxis === undefined) {
+        if (selectedXaxis === undefined) {
             return
         }
 
-        scatter(props.data, div_id, selectedXaxis, selectedYaxis)
+        histogram(props.data, div_id, selectedXaxis)
     })
 
     return (
         <>
-            <Show when={xaxis() === undefined || yaxis() === undefined}>
+            <Show when={xaxis() === undefined}>
                 <Selector
                     value={xaxis()}
                     values={columns()}
                     setValue={setXaxis}
                     title={'xaxis Selection'}
-                />
-                <Selector
-                    value={yaxis()}
-                    values={columns()}
-                    setValue={setYaxis}
-                    title={'yaxis Selection'}
                 />
             </Show>
             <div id={plot_div_id()} />
@@ -130,4 +117,4 @@ const Scatter: Component<Props> = (props: Props) => {
     )
 }
 
-export default Scatter
+export default Histogram
